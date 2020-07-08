@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="../vue.js"></script>
+</head>
+<style>
+    *{
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .page{
+        height: 40px;
+        margin: 10px auto;
+    }
+    .page  span{
+        float:left;
+        width: 100px;
+        height: 40px;
+        text-align: center;
+        line-height: 40px;
+        background-color: black;
+        color: blanchedalmond;
+        margin-left: 10px;
+    }
+    .page   .page-content{
+        height: 40px;
+        overflow: hidden;
+        float: left;
+    }
+    .page   .page-content  li{
+        float: left;
+        width: 40px;
+        height: 40px;
+        text-align: center;
+        line-height: 40px;
+        background-color: black;
+        color: blanchedalmond;
+        margin-left: 5px;
+    }
+    .page  .page-content li.selected{
+        background-color: blue;
+    }
+    .btnhidden{
+        background-color: #cdcdcd !important;
+    }
+    .tr {
+        width: 600px;
+        height: 40px;
+    }
+    .tr li {
+        float: left;
+        width: 200px;
+        height: 40px;
+        background-color: black;
+        color: blanchedalmond;
+    }
+</style>
+<body>
+    <div id="app">
+        <my-search @returnsearchcontent="getsearchcontent"></my-search>
+        <my-list :list="list"></my-list>
+        <my-page 
+        :count="count"
+        :shownum="shownum"
+        :showpage="showpage"
+        @callbackfun="showpageindex"></my-page>
+    </div>
+</body>
+
+<template id="search">
+    <div>
+        <input type="text" ref="key">
+        <label><input type="radio" v-model="type" value="id">按id</label>
+        <label><input type="radio" v-model="type" value="goodsprice">按价格</label>
+
+        <label><input type="radio" v-model="order" value="asc">升序</label>
+        <label><input type="radio" v-model="order" value="desc">降序</label>
+
+        <button @click="btnclick">搜索</button>
+
+    </div>
+</template>
+
+<template id="list">
+    <div class="list">
+        <ul class="tr">
+            <li>商品名称</li>
+            <li>商品价格</li>
+            <li>商品数量</li>
+        </ul>        
+        <ul class="tr" v-for="item in list" :key="item.id">
+            <li>{{item.goodsname}}</li>
+            <li>{{item.goodsprice}}</li>
+            <li>{{item.goodsnum}}</li>
+        </ul>
+    </div>
+</template>
+
+<template id="page">
+    <div class="page">
+        <span class="page-prve" @click="prev" v-if="isPrev">上一页</span>
+        <span class="page-prve btnhidden" v-else>上一页</span>
+        <ul class="page-content">
+            <li :class="{selected:i==pageIndex}" v-for="i in end" :key="i" v-if="i>=start" @click="changeindex(i)">{{i}}</li>
+        </ul>
+        <span class="page-next" @click="next" v-if="isNext">下一页</span>
+        <span class="page-next btnhidden" v-else >下一页</span>
+    </div>
+</template>
+
+<script>
+    var app = new Vue({
+        el: "#app",
+        data: {
+            count: 100,
+            shownum: 10,
+            showpage: 5,
+            list: [],
+            key: "",
+            type: "id",
+            order: "asc",
+            pageIndex: 1
+        },
+        created:function(){
+            this.getData();
+        },
+        methods:{
+            showpageindex(index){
+                // alert(index);
+                this.pageIndex = index;
+                this.getData();
+            },
+            getsearchcontent(obj){
+                this.order = obj.order;
+                this.key = obj.key;
+                this.type = obj.type;
+                this.pageIndex = 1;
+                // console.log(this.key,this.type,this.order);
+                this.getData();
+            },
+            getData(){  // 调接口
+                fetch(`http://localhost/0617%28vue-gouwuche%29/list-v2.php?key=${this.key}&type=${this.type}&order=${this.order}&pageIndex=${(this.pageIndex-1)*10}&showNum=10 `).then(data=>data.json()).then(data=>{
+                    console.log(data);
+                    this.count = data.totalmsg[0].total;
+                    this.list = data.msg;
+                })
+            }
+        },
+        // http://localhost/0617%28vue-gouwuche%29/list-v2.php?key=&type=id&order=desc&pageIndex=0&showNum=5 
+        components: {
+            "my-search":{
+                template: "#search",
+                data(){
+                    return {
+                        type: "id",
+                        order: "asc"
+                    }
+                },
+                methods: {
+                    btnclick(){
+                        this.$emit("returnsearchcontent",{key:this.$refs.key.value, order:this.order, type:this.type});
+                    },
+                }
+                
+            },
+            "my-list":{
+                template: "#list",
+                props:['list']
+                
+            },
+            "my-page": {
+                template: "#page",
+                props:["count","shownum","showpage"],
+                data(){
+                    return {
+                        pageIndex:1,
+                        start:1,
+                        end:1,
+                        isPrev:false,
+                        isNext:false
+                    }
+                },
+                methods:{
+                    prev(){
+                        this.pageIndex--;
+                    },
+                    next(){
+                        this.pageIndex++;
+                    },
+                    changeindex(i){
+                        this.pageIndex = i;
+                    }
+                },
+                watch:{
+                    count(num){
+                        this.count = num;
+                        this.pageIndex = 1;
+                        this.isNext = false;
+                        this.maxPageIndex = Math.ceil(this.count/this.shownum); //得到最大页数
+                        this.middleIndex = parseInt(this.showpage/2);    //左右两侧数量
+                        if(this.maxPageIndex>this.showpage){
+                            this.end = this.showpage;
+                        }else{
+                            this.end = this.maxPageIndex;
+                        }
+                        if(this.pageIndex!=this.maxPageIndex){
+                            this.isNext = true;
+                        }
+                    },
+                    pageIndex(index){
+                        this.start =1;//设置初始值
+                        if(this.maxPageIndex>this.showpage){
+                            this.end = this.showpage;
+                        }else{
+                            this.end = this.maxPageIndex;
+                        }
+                        if(index>this.middleIndex){
+                            this.end = index + this.middleIndex;
+                            this.start = index - this.middleIndex;
+                        }
+                        if(index>=this.maxPageIndex-this.middleIndex){
+                            this.end = this.maxPageIndex;
+                            this.start = this.maxPageIndex - 2*this.middleIndex;
+                        }
+                        this.isNext = false;
+                        this.isPrev = false;
+                        if(index!=1){
+                            this.isPrev = true
+                        }
+                        if(index!=this.maxPageIndex){
+                            this.isNext = true;
+                        }
+                        this.$emit("callbackfun",index);
+                    }
+                }
+            }
+        }
+    })
+</script>
+</html>
