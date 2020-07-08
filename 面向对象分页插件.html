@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            list-style:none;
+        }
+        .page{
+            height: 42px;
+            overflow: hidden;
+            margin: 10px auto;
+        }
+        .page  button{
+            float: left;
+            width: 60px;
+            height: 40px;
+            background-color: black;
+            color: white;
+            text-align: center;
+            line-height: 40px;
+            margin-left: 10px;
+        }
+        .page button.toOneIndexButton{
+            background-color: red;
+            color: black;
+        }
+        .page button.disabled {
+            background-color: #cdcdcd;
+        }
+        .page .page-content{
+            float: left;
+            margin-left: 10px;
+            height: 42px;
+            overflow: hidden;
+        }
+        .page  .page-content li{
+            float:left;
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            line-height: 40px;
+            background-color: black;
+            color: white;
+            margin-left: 5px;
+        }
+        .page .page-content li.selected{
+            color: black;
+            background-color: whitesmoke;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <div id="box">
+        <div id="page" class="page">
+            <!-- <button class="page-prev">上一页</button>
+            <ul class="page-content">
+                <li class="selected">1</li>
+                <li>2</li>
+                <li>3</li>
+                <li>4</li>
+                <li>5</li>
+            </ul>
+            <button class="page-next">下一页</button> -->
+        </div>
+    </div>
+</body>
+<script>
+    function Page(json){
+        this.target = document.querySelector(json.el);
+        this.options = {
+            count: 100,     // 数据总数
+            shownum: 10,    // 每页显示条数
+            showpage: 5     // 出现的页码数
+        };
+        Object.assign(this.options,json.data);  // 给options 赋值
+        this.callBack = json.cb;        // 回调函数
+        this.target.className = 'page';
+        this.pageIndex = 1;     // 当前浏览的页码
+        this.create();  // 创建静态元素
+        this.renderData();
+        // this.bindEvent();
+    }
+    
+    Page.prototype.bindEvent = function(){
+        this.prevBtn.className = 'disabled';        // 加上禁止点击的效果
+        this.nextBtn.className = 'disabled';
+
+        this.prevBtn.onclick = '';      // 把事件置空
+        this.nextBtn.onclick = '';      // 把事件置空
+
+        var that = this;
+
+        if(this.pageIndex != 1){
+            this.prevBtn.onclick = function(){      // 这里this指向要变成button
+                that.pageIndex-- ;
+                that.renderData();
+            }
+            this.prevBtn.className = '';
+            this.prevBtn.removeAttribute('disabled');   // 禁止点击
+        }else{
+            this.prevBtn.setAttribute('disabled','disabled')        // 禁止点击
+        }
+        
+        if(this.pageIndex != this.maxpage){
+            this.nextBtn.onclick = function(){       // 这里this指向也要变
+                that.pageIndex++ ;
+                that.renderData();      // 重新渲染
+            }
+            this.nextBtn.className = '';
+            this.nextBtn.removeAttribute('disabled');
+        }else{
+            this.nextBtn.setAttribute('disabled','disabled')
+        }
+
+        this.toOneIndexBtn.onclick = function(){
+            that.pageIndex = 1;         // 回首页
+            that.renderData();
+        }
+    }
+
+    Page.prototype.renderData = function(){
+        let maxpage = Math.ceil(this.options.count/this.options.shownum);       //最大页码
+        this.maxpage = maxpage;     // 声明maxpage供绑定事时做判断
+        let averagepage = parseInt(this.options.showpage/2);    //取得左右各几个页码
+        let startIndex = 1;
+        let endIndex = this.options.showpage;
+        if(endIndex < maxpage){     // 连续页码判断
+            endIndex = endIndex;    // 如果只有2页 那就显示2个页码  如果有10页限制显示5页，那就显示5页
+        }else{
+            endIndex = maxpage;
+        }
+        this.content.innerHTML = ''; // 渲染前先把ul置空
+        
+        if(this.pageIndex > averagepage){       // 中间页码判断
+            startIndex = this.pageIndex - averagepage;
+            endIndex = this.pageIndex + averagepage;
+        }
+                                                           
+        if(this.pageIndex > (maxpage - averagepage)){       // 临界值判断 到末位了
+            endIndex = maxpage;
+            startIndex = maxpage - averagepage * 2;
+            if(startIndex <= 1){            // 临界值,防止 出现 负页码
+                startIndex = 1;
+            }
+        }
+
+        if(this.pageIndex <= 1){                    // 临界值判断 到起始位置
+            startIndex = 1;
+        }
+
+        this.bindEvent();       // 在内部, 先移出绑定效果, 再绑定点击事件
+        var that = this;          
+
+        for(let i = startIndex ; i <= endIndex ; i++){
+            let li = document.createElement('li');
+            if( i == this.pageIndex ){  
+                li.className = 'selected';
+            }
+            li.innerHTML = i; 
+            this.content.appendChild(li);
+            li.onclick = function(){        // this指向变化
+                that.pageIndex = this.innerHTML-0; //如果点击 页码, 页码跳转
+                that.renderData()                 // 重新渲染
+            }
+        }
+        this.callBack(this.pageIndex);   // 回调函数把pageindex传回去,调用接口
+    }
+    
+    Page.prototype.create = function(){
+        this.prevBtn = document.createElement('button');
+        this.prevBtn.className = 'page-prev';
+        this.prevBtn.innerHTML = '上一页';
+        this.target.appendChild(this.prevBtn);
+
+        this.content = document.createElement('ul');
+        this.content.className = 'page-content';
+        this.target.appendChild(this.content);
+
+        this.nextBtn = document.createElement('button');
+        this.nextBtn.className = 'page-next';
+        this.nextBtn.innerHTML = '下一页';
+        this.target.appendChild(this.nextBtn);
+
+        this.toOneIndexBtn = document.createElement('button');
+        this.toOneIndexBtn.className = 'toOneIndexButton';
+        this.toOneIndexBtn.innerHTML = '回首页';
+        this.target.appendChild(this.toOneIndexBtn);
+    }
+
+    new Page({
+        el: "#page",
+        data: {
+            count: 100,     // 数据总数
+            shownum: 10,    // 每页显示条数
+            showpage: 5     // 出现的页码数
+        },
+        cb:function(pageIndex){
+            console.log(pageIndex);
+        }
+    })
+</script>
+</html>
