@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+<script src="../vue.js"></script>
+<style>
+    *{
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .page{
+        height: 40px;
+        margin: 10px auto;
+    }
+    .page  span{
+        float:left;
+        width: 100px;
+        height: 40px;
+        text-align: center;
+        line-height: 40px;
+        background-color: black;
+        color: blanchedalmond;
+        margin-left: 10px;
+    }
+    .page   .page-content{
+        height: 40px;
+        overflow: hidden;
+        float: left;
+    }
+    .page   .page-content  li{
+        float: left;
+        width: 40px;
+        height: 40px;
+        text-align: center;
+        line-height: 40px;
+        background-color: black;
+        color: blanchedalmond;
+        margin-left: 5px;
+    }
+    .page  .page-content li.selected{
+        background-color: blue;
+    }
+    .nextdisable{
+        background-color: #cdcdcd !important;
+    }
+    .prevdisabled{
+        background-color: #cdcdcd !important;
+    }
+
+</style>
+</head>
+<body>
+    <div id="app">
+        <my-page :count="count" :shownum="shownum" :showpage="showpage" @returnpageindex="getpageindex"></my-page>
+    </div>
+</body>
+<template id="page">
+    <div class="page">
+
+        <span class="page-prev" @click="prev" v-if="showprev">上</span>
+        <span class="page-prev prevdisabled" v-else>上</span>
+
+
+        <ul class="page-content">
+            <li :class="{selected:i==pageIndex}" v-for="i in end" :key="i" v-if="i>=start" @click="changeIndex(i)">{{i}}</li>
+        </ul> 
+
+        <span class="page-next" @click="next" v-if="shownext">下</span>
+        <span class="page-next prevdisabled"  v-else>下</span>
+
+    </div>
+</template>
+<script>
+    new  Vue({
+        el:"#app",
+        data:{
+            count:100,
+            shownum:10,
+            showpage:5,
+            list:[],
+        },
+        created:function(){
+            //调用ajax获取count
+        },
+        methods:{
+            getpageindex(index){
+                //调用ajax去更新list
+                // alert(index);
+            }
+        },
+        components:{
+            "my-page":{
+                props:["count","showpage","shownum"],
+                data:function(){
+                    return {
+                      pageIndex:1,
+                      start:1,
+                      end:1,
+                      shownext:true,
+                      showprev:false
+                    }
+                },
+                mounted:function(){
+                    this.maxPageIndex = Math.ceil(this.count/this.shownum);
+                    this.middleNum =Math.floor(this.showpage/2);//得到中间的页码
+                    //得到总的页码数
+                    this.end = this.maxPageIndex>this.showpage? this.showpage:this.maxPageIndex;
+                },
+                template:"#page",
+                methods:{
+                    next(){
+                        this.pageIndex++;
+                    },
+                    prev(){
+                        this.pageIndex--;
+                    },
+                    changeIndex(i){
+                        this.pageIndex = i;
+                    }
+                },
+                watch:{
+                    pageIndex(index){
+                        this.start =1;//设置初始值
+                        this.maxPageIndex = Math.ceil(this.count/this.shownum);
+                        this.middleNum =Math.floor(this.showpage/2);//得到中间的页码
+                         //得到总的页码数
+                        this.end = this.maxPageIndex>this.showpage? this.showpage:this.maxPageIndex;
+                        //设置结束值
+                        if(index>this.middleNum){//大于中间数
+                            this.end  = index+this.middleNum;
+                            this.start = index - this.middleNum;
+                        }
+                        //到达尾部(10页的时候  选择的页码是9  效果应该是678910)
+                        if(index>this.maxPageIndex-this.middleNum){
+                            this.end = this.maxPageIndex;
+                            this.start = this.maxPageIndex - 2*this.middleNum;
+                        }
+                    
+                        this.shownext=false;
+                        this.showprev =false;
+                        if(index!=1){
+                            this.showprev =true;
+                        }
+                        if(index!=this.maxPageIndex){
+                            this.shownext = true;
+                        }
+                        this.$emit("returnpageindex",index);
+                       
+                    }
+                }
+            }
+        }
+
+    })
+
+</script>
+</html>
